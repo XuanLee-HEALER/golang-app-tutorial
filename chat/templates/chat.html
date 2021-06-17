@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat</title>
+  <style>
+    input {
+      display: block;
+    }
+
+    ul {
+      list-style: none;
+    }
+  </style>
+</head>
+
+<body>
+  <ul id="messages"></ul>
+  <form id="chatbox">
+    <textarea name="" id="chatroom" cols="30" rows="10"></textarea>
+    <input type="submit" value="Send">
+  </form>
+</body>
+
+<script>
+  (function () {
+    var socket = null
+    var msgBox = document.getElementById("chatroom")
+    var messages = document.getElementById("messages")
+    document.getElementById("chatbox").addEventListener("submit", function (e) {
+      e.preventDefault()
+      if (!msgBox.value) return false
+      if (!socket) {
+        alert("Error: there is no socket connection.")
+        return false
+      }
+      socket.send(msgBox.value)
+      console.log(msgBox.value)
+      msgBox.value = ""
+      console.log("mf")
+      return false
+    })
+    if (!window["WebSocket"]) {
+      alert("Error: your browser does not support web sockets.")
+    } else {
+      socket = new WebSocket("ws://localhost:8080/room")
+      socket.onclose = function () {
+        alert("connection has been closed")
+      }
+      socket.onmessage = function (e) {
+        var li = document.createElement("li")
+        li.innerHTML = e.data
+        messages.appendChild(li)
+      }
+    }
+  })()
+</script>
+
+</html>
