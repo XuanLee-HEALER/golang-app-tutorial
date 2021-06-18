@@ -8,12 +8,9 @@ import (
 )
 
 type client struct {
-	// 每个客户端的socket
-	socket *websocket.Conn
-	// 客户端发送的数据
-	send chan []byte
-	// 每个客户端要知道把数据发送到哪个room
-	room *room
+	socket *websocket.Conn // 每个客户端的socket
+	send   chan []byte     // 客户端发送的数据
+	room   *room           // 每个客户端要知道把数据发送到哪个room
 }
 
 // 将接收到的消息直接传给room

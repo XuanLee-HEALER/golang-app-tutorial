@@ -9,14 +9,10 @@ import (
 )
 
 type room struct {
-	// 持有客户端发送过来的信息，然后转给其它客户端
-	forward chan []byte
-	// 加入房间的客户端
-	join chan *client
-	// 离开房间的客户端
-	leave chan *client
-	// 所有的客户端
-	clients map[*client]bool
+	forward chan []byte      // 持有客户端发送过来的信息，然后转给其它客户端
+	join    chan *client     // 加入房间的客户端
+	leave   chan *client     // 离开房间的客户端
+	clients map[*client]bool // 所有的客户端
 }
 
 // 创建实例的helper函数
@@ -59,10 +55,10 @@ const (
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:  socketBufferSize,
 	WriteBufferSize: socketBufferSize,
+	CheckOrigin:     nil,
 }
 
 func (r *room) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	request.Header.Set("Origin", "http://localhost:8080")
 	// http请求要升级成为socket请求
 	socket, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {

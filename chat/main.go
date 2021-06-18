@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"html/template"
 	"log"
 	"net/http"
@@ -23,17 +24,21 @@ func (t *templateHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 		// Must是对返回*Template类型值的函数的包装函数，遮蔽了error可以不为nil的情况
 		t.templ = template.Must(template.ParseFiles(filepath.Join("templates", t.filename)))
 	})
-	t.templ.Execute(writer, nil)
+	t.templ.Execute(writer, request)
 }
 
 func main() {
+	addr := flag.String("addr", ":8080", "the addr of the application.")
+	// parse the flag
+	flag.Parse()
 	r := newRoom()
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
 	http.Handle("/", &templateHandler{filename: "chat.html"})
 	http.Handle("/room", r)
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	log.Println("starting web server on: ", *addr)
+	if err := http.ListenAndServe(*addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
