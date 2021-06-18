@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
+	"golang-app-tutorial/trace"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -28,10 +30,16 @@ func (t *templateHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 }
 
 func main() {
+	var verbose bool
+
 	addr := flag.String("addr", ":8080", "the addr of the application.")
+	flag.BoolVar(&verbose, "v", false, "open verbose mode")
 	// parse the flag
 	flag.Parse()
 	r := newRoom()
+	if verbose {
+		r.tracer = trace.New(os.Stdout)
+	}
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
 	http.Handle("/", &templateHandler{filename: "chat.html"})
 	http.Handle("/room", r)

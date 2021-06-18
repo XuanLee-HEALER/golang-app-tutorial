@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"golang-app-tutorial/trace"
 	"log"
 	"net/http"
 
@@ -13,6 +13,7 @@ type room struct {
 	join    chan *client     // 加入房间的客户端
 	leave   chan *client     // 离开房间的客户端
 	clients map[*client]bool // 所有的客户端
+	tracer  trace.Tracer     // 记录聊天室内的信息
 }
 
 // 创建实例的helper函数
@@ -22,6 +23,7 @@ func newRoom() *room {
 		join:    make(chan *client),
 		leave:   make(chan *client),
 		clients: make(map[*client]bool),
+		tracer:  trace.Off(),
 	}
 }
 
@@ -33,13 +35,16 @@ func (r *room) run() {
 		select {
 		case client := <-r.join:
 			r.clients[client] = true
+			r.tracer.Trace("New client joined.")
 		case client := <-r.leave:
 			delete(r.clients, client)
 			close(client.send)
+			r.tracer.Trace("Client left.")
 		case msg := <-r.forward:
-			fmt.Printf("room receive: %s\n", msg)
+			r.tracer.Trace("Message received: ", string(msg))
 			for client := range r.clients {
 				client.send <- msg
+				r.tracer.Trace(" -- send to client.")
 			}
 		}
 	}
