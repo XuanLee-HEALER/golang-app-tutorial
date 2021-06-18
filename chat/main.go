@@ -41,7 +41,7 @@ func main() {
 		r.tracer = trace.New(os.Stdout)
 	}
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
-	http.Handle("/", &templateHandler{filename: "chat.html"})
+	http.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
 	http.Handle("/room", r)
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
