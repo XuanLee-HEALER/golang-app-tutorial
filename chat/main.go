@@ -40,8 +40,11 @@ func main() {
 	if verbose {
 		r.tracer = trace.New(os.Stdout)
 	}
+
+	http.Handle("/bootstrap-5.0.1-dist/", http.StripPrefix("/bootstrap-5.0.1-dist", http.FileServer(http.Dir("F:\\go_common\\src\\golang-app-tutorial\\chat\\templates\\bootstrap-5.0.1-dist"))))
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
 	http.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
+	http.Handle("/login", &templateHandler{filename: "login.html"})
 	http.Handle("/room", r)
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
