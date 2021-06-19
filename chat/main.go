@@ -9,6 +9,16 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/stretchr/gomniauth"
+	"github.com/stretchr/gomniauth/providers/facebook"
+	"github.com/stretchr/gomniauth/providers/github"
+	"github.com/stretchr/gomniauth/providers/google"
+)
+
+const (
+	googleClientId     = "889254910425-iupbf91rpnb4e7ub90mq43jgk4r9kuqe.apps.googleusercontent.com"
+	googleClientSecret = "384dIEsPznMKJmKweLdTaYgm"
 )
 
 // 这个类型满足http.Handler接口，所以可以直接传入 http.Handle函数
@@ -41,10 +51,22 @@ func main() {
 		r.tracer = trace.New(os.Stdout)
 	}
 
-	http.Handle("/bootstrap-5.0.1-dist/", http.StripPrefix("/bootstrap-5.0.1-dist", http.FileServer(http.Dir("F:\\go_common\\src\\golang-app-tutorial\\chat\\templates\\bootstrap-5.0.1-dist"))))
+	// setup gomniauth
+	gomniauth.SetSecurityKey("Life goes on!")
+	gomniauth.WithProviders(
+		facebook.New("key", "secret", "http://localhost:8080/auth/callback/facebook"),
+		github.New("key", "secret", "http://localhost:8080/auth/callback/github"),
+		google.New(googleClientId, googleClientSecret, "http://localhost:8080/auth/callback/google"),
+	)
+
+	/*
+		goweb, pat, routes, or mux 如果需要更细致的路由管理，可以使用这些第三方包
+	*/
+	http.Handle("/bootstrap-5.0.1-dist/", http.StripPrefix("/bootstrap-5.0.1-dist", http.FileServer(http.Dir(filepath.Join("templates", "asset")))))
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
 	http.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
 	http.Handle("/login", &templateHandler{filename: "login.html"})
+	http.HandleFunc("/auth/", loginHandler)
 	http.Handle("/room", r)
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
