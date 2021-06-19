@@ -62,7 +62,7 @@ func main() {
 	/*
 		goweb, pat, routes, or mux 如果需要更细致的路由管理，可以使用这些第三方包
 	*/
-	http.Handle("/bootstrap-5.0.1-dist/", http.StripPrefix("/bootstrap-5.0.1-dist", http.FileServer(http.Dir(filepath.Join("templates", "asset")))))
+	http.Handle("/asset/", http.StripPrefix("/asset", http.FileServer(http.Dir(filepath.Join("templates", "asset")))))
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
 	http.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
 	http.Handle("/login", &templateHandler{filename: "login.html"})

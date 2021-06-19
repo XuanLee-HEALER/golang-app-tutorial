@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/stretchr/gomniauth"
+	"github.com/stretchr/objx"
 )
 
 type authHandler struct {
@@ -59,6 +60,32 @@ func loginHandler(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, fmt.Sprintf("error when trying to GetBeginAuthURL for %s: %s", provider, err), http.StatusInternalServerError)
 		}
 		writer.Header().Set("Location", loginUrl)
+		writer.WriteHeader(http.StatusTemporaryRedirect)
+	case "callback":
+		provider, err := gomniauth.Provider(provider) // 返回服务供应商信息
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
+			return
+		}
+		creds, err := provider.CompleteAuth(objx.MustFromURLQuery(request.URL.RawQuery)) // 将RawQuery从请求转换为objx.Map，CompleteAuth使用这个值来完成与服务商的握手
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to complete auth for %s: %s", provider, err), http.StatusInternalServerError)
+			return
+		}
+		user, err := provider.GetUser(creds) // 通过授权内容来获取用户信息
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to trying get user from %s: %s", provider, err), http.StatusInternalServerError)
+			return
+		}
+		authCookieValue := objx.New(map[string]interface{}{
+			"name": user.Name(),
+		}).MustBase64() // base64保证数据加密，当数据通过url传输或者保存数据进cookie时可以通过这种方法增强安全性，但是base64加密是对称性加密，可以通过工具解密
+		http.SetCookie(writer, &http.Cookie{
+			Name:  "auth",
+			Value: authCookieValue,
+			Path:  "/",
+		})
+		writer.Header().Set("Location", "/chat")
 		writer.WriteHeader(http.StatusTemporaryRedirect)
 	default:
 		writer.WriteHeader(http.StatusNotFound)
