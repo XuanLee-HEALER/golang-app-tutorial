@@ -14,20 +14,18 @@ type authHandler struct {
 }
 
 func (a *authHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	_, err := request.Cookie("auth")
-	if err == http.ErrNoCookie {
+	cookies, err := request.Cookie("auth")
+	if err == http.ErrNoCookie || cookies.Value == "" {
 		// not authenticated
 		writer.Header().Set("Location", "/login")
 		writer.WriteHeader(http.StatusTemporaryRedirect) // send response
 		return
 	}
-
 	if err != nil {
 		// other error
 		http.Error(writer, err.Error(), http.StatusInternalServerError) // send error response
 		return
 	}
-
 	// success call next handler
 	a.next.ServeHTTP(writer, request)
 }
@@ -37,63 +35,62 @@ func MustAuth(handler http.Handler) *authHandler {
 }
 
 func loginHandler(writer http.ResponseWriter, request *http.Request) {
-	if cookies, err := request.Cookie("auth"); err == http.ErrNoCookie || cookies.Value == "" {
-		segs := strings.Split(request.URL.Path, "/")
-		var action, provider string
+	segs := strings.Split(request.URL.Path, "/")
+	var action, provider string
 
-		if len(segs) < 4 {
-			action = "notfound"
-		} else {
-			action = segs[2]
-			provider = segs[3]
-		}
-
-		switch action {
-		case "login":
-			provider, err := gomniauth.Provider(provider)
-			if err != nil {
-				http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
-				return
-			}
-			// 第一个state参数是编码后的map数据，发送给授权服务商，服务商会把这些数据再发回给回调url。第二个参数也是发送给服务商的map数据，可能会改变授权行为，例如scope参数
-			loginUrl, err := provider.GetBeginAuthURL(nil, nil)
-			if err != nil {
-				http.Error(writer, fmt.Sprintf("error when trying to GetBeginAuthURL for %s: %s", provider, err), http.StatusInternalServerError)
-			}
-			writer.Header().Set("Location", loginUrl)
-			writer.WriteHeader(http.StatusTemporaryRedirect)
-		case "callback":
-			provider, err := gomniauth.Provider(provider) // 返回服务供应商信息
-			if err != nil {
-				http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
-				return
-			}
-			creds, err := provider.CompleteAuth(objx.MustFromURLQuery(request.URL.RawQuery)) // 将RawQuery从请求转换为objx.Map，CompleteAuth使用这个值来完成与服务商的握手
-			if err != nil {
-				http.Error(writer, fmt.Sprintf("error when trying to complete auth for %s: %s", provider, err), http.StatusInternalServerError)
-				return
-			}
-			user, err := provider.GetUser(creds) // 通过授权内容来获取用户信息
-			if err != nil {
-				http.Error(writer, fmt.Sprintf("error when trying to trying get user from %s: %s", provider, err), http.StatusInternalServerError)
-				return
-			}
-			authCookieValue := objx.New(map[string]interface{}{
-				"name":       user.Name(),
-				"avatar_url": user.AvatarURL(),
-			}).MustBase64() // base64保证数据加密，当数据通过url传输或者保存数据进cookie时可以通过这种方法增强安全性，但是base64加密是对称性加密，可以通过工具解密
-			http.SetCookie(writer, &http.Cookie{
-				Name:  "auth",
-				Value: authCookieValue,
-				Path:  "/",
-			})
-			writer.Header().Set("Location", "/chat")
-			writer.WriteHeader(http.StatusTemporaryRedirect)
-		default:
-			writer.WriteHeader(http.StatusNotFound)
-			fmt.Fprintf(writer, "auth action %s not supported", action)
-		}
+	if len(segs) < 4 {
+		action = "notfound"
+	} else {
+		action = segs[2]
+		provider = segs[3]
 	}
+
+	switch action {
+	case "login":
+		provider, err := gomniauth.Provider(provider)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
+			return
+		}
+		// 第一个state参数是编码后的map数据，发送给授权服务商，服务商会把这些数据再发回给回调url。第二个参数也是发送给服务商的map数据，可能会改变授权行为，例如scope参数
+		loginUrl, err := provider.GetBeginAuthURL(nil, nil)
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to GetBeginAuthURL for %s: %s", provider, err), http.StatusInternalServerError)
+		}
+		writer.Header().Set("Location", loginUrl)
+		writer.WriteHeader(http.StatusTemporaryRedirect)
+	case "callback":
+		provider, err := gomniauth.Provider(provider) // 返回服务供应商信息
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
+			return
+		}
+		creds, err := provider.CompleteAuth(objx.MustFromURLQuery(request.URL.RawQuery)) // 将RawQuery从请求转换为objx.Map，CompleteAuth使用这个值来完成与服务商的握手
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to complete auth for %s: %s", provider, err), http.StatusInternalServerError)
+			return
+		}
+		user, err := provider.GetUser(creds) // 通过授权内容来获取用户信息
+		if err != nil {
+			http.Error(writer, fmt.Sprintf("error when trying to trying get user from %s: %s", provider, err), http.StatusInternalServerError)
+			return
+		}
+		authCookieValue := objx.New(map[string]interface{}{
+			"name":       user.Name(),
+			"avatar_url": user.AvatarURL(),
+		}).MustBase64() // base64保证数据加密，当数据通过url传输或者保存数据进cookie时可以通过这种方法增强安全性，但是base64加密是对称性加密，可以通过工具解密
+		http.SetCookie(writer, &http.Cookie{
+			Name:  "auth",
+			Value: authCookieValue,
+			Path:  "/",
+		})
+		writer.Header().Set("Location", "/chat")
+		writer.WriteHeader(http.StatusTemporaryRedirect)
+	default:
+		writer.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(writer, "auth action %s not supported", action)
+	}
+
 }
 
 /*

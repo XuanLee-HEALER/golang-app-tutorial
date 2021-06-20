@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="asset/css/bootstrap.css" />
     <title>Chat</title>
     <style>
       input {
@@ -13,17 +14,39 @@
       ul {
         list-style: none;
       }
+      ul#messages {
+        list-style: none;
+      }
+      ul#messages li {
+        margin-bottom: 2px;
+      }
+      ul#message li img {
+        margin-right: 10px;
+      }
     </style>
   </head>
 
   <body>
-    <ul id="messages"></ul>
-    <form id="chatbox">
-      {{.UserData.name}}
-      <textarea name="" id="chatroom" cols="30" rows="10"></textarea>
-      <input type="submit" value="Send" /> or
-      <a href="/logout">sign out</a>
-    </form>
+    <div class="container">
+      <div class="panel panel-default">
+        <div class="panel-body">
+          <ul id="messages"></ul>
+        </div>
+      </div>
+      <form id="chatbox" role="form">
+        <div class="form-group">
+          <label for="message">Send a message as {{.UserData.name}}</label> or
+          <a href="/logout">Sign out</a>
+          <textarea
+            id="chatroom"
+            cols="30"
+            rows="10"
+            class="form-control"
+          ></textarea>
+          <input type="submit" value="Send" class="btn btn-default" />
+        </div>
+      </form>
+    </div>
   </body>
 
   <script>
@@ -59,10 +82,8 @@
           var span = document.createElement("span");
           img.style.cssText = "width: 50; verticalAlign: 'middle'";
           img.setAttribute("src", data.AvatarURL);
-          strong.innerHTML = data.Name + "(" + data.When + "):";
           span.innerText = data.Message;
           li.appendChild(img);
-          li.appendChild(strong);
           li.appendChild(span);
           messages.appendChild(li);
         };

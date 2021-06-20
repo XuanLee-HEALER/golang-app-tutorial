@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"golang-app-tutorial/trace"
 	"html/template"
 	"log"
@@ -10,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/namsral/flag"
 	"github.com/stretchr/gomniauth"
 	"github.com/stretchr/gomniauth/providers/facebook"
 	"github.com/stretchr/gomniauth/providers/github"
