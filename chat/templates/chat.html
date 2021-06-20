@@ -55,7 +55,7 @@
           var li = document.createElement("li");
           var strong = document.createElement("strong");
           var span = document.createElement("span");
-          strong.innerText = data.Name + ":";
+          strong.innerHTML = data.Name + "(" + data.When + "):";
           span.innerText = data.Message;
           li.appendChild(strong);
           li.appendChild(span);

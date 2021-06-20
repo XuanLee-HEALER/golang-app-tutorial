@@ -2,7 +2,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -28,7 +27,6 @@ func (c *client) read() {
 		}
 		msg.When = time.Now()
 		msg.Name = c.userData["name"].(string)
-		fmt.Printf("receive: %s\n", msg)
 		c.room.forward <- msg
 	}
 }
