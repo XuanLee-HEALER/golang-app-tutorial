@@ -21,7 +21,8 @@
     <form id="chatbox">
       {{.UserData.name}}
       <textarea name="" id="chatroom" cols="30" rows="10"></textarea>
-      <input type="submit" value="Send" />
+      <input type="submit" value="Send" /> or
+      <a href="/logout">sign out</a>
     </form>
   </body>
 
@@ -53,10 +54,14 @@
         socket.onmessage = function (e) {
           var data = JSON.parse(e.data);
           var li = document.createElement("li");
+          var img = document.createElement("img");
           var strong = document.createElement("strong");
           var span = document.createElement("span");
+          img.style.cssText = "width: 50; verticalAlign: 'middle'";
+          img.setAttribute("src", data.AvatarURL);
           strong.innerHTML = data.Name + "(" + data.When + "):";
           span.innerText = data.Message;
+          li.appendChild(img);
           li.appendChild(strong);
           li.appendChild(span);
           messages.appendChild(li);

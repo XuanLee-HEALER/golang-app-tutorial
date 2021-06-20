@@ -76,6 +76,17 @@ func main() {
 	http.Handle("/login", &templateHandler{filename: "login.html"})
 	http.HandleFunc("/auth/", loginHandler)
 	http.Handle("/room", r)
+	// 添加logout功能，删除coockie并跳转回首页
+	http.HandleFunc("/logout", func(rw http.ResponseWriter, r *http.Request) {
+		http.SetCookie(rw, &http.Cookie{
+			Name:   "auth",
+			Value:  "", // 不是所有浏览器都会强制删除cookie，所以需要显示设置值
+			Path:   "/",
+			MaxAge: -1, // coockie应该被浏览器立即删除
+		})
+		rw.Header().Set("Location", "/chat")
+		rw.WriteHeader(http.StatusTemporaryRedirect)
+	})
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
 	log.Println("starting web server on: ", *addr)
