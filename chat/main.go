@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/gomniauth/providers/facebook"
 	"github.com/stretchr/gomniauth/providers/github"
 	"github.com/stretchr/gomniauth/providers/google"
+	"github.com/stretchr/objx"
 )
 
 const (
@@ -36,7 +37,14 @@ func (t *templateHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 		// Must是对返回*Template类型值的函数的包装函数，遮蔽了error可以不为nil的情况
 		t.templ = template.Must(template.ParseFiles(filepath.Join("templates", t.filename)))
 	})
-	t.templ.Execute(writer, request)
+	data := map[string]interface{}{
+		"Host": request.Host,
+	}
+	if authCookies, err := request.Cookie("auth"); err == nil {
+		data["UserData"] = objx.MustFromBase64(authCookies.Value)
+	}
+
+	t.templ.Execute(writer, data)
 }
 
 func main() {

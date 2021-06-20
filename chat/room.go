@@ -6,10 +6,11 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/objx"
 )
 
 type room struct {
-	forward chan []byte      // 持有客户端发送过来的信息，然后转给其它客户端
+	forward chan *message    // 持有客户端发送过来的信息，然后转给其它客户端
 	join    chan *client     // 加入房间的客户端
 	leave   chan *client     // 离开房间的客户端
 	clients map[*client]bool // 所有的客户端
@@ -19,7 +20,7 @@ type room struct {
 // 创建实例的helper函数
 func newRoom() *room {
 	return &room{
-		forward: make(chan []byte),
+		forward: make(chan *message),
 		join:    make(chan *client),
 		leave:   make(chan *client),
 		clients: make(map[*client]bool),
@@ -41,7 +42,7 @@ func (r *room) run() {
 			close(client.send)
 			r.tracer.Trace("Client left.")
 		case msg := <-r.forward:
-			r.tracer.Trace("Message received: ", string(msg))
+			r.tracer.Trace("Message received: ", msg.Message)
 			for client := range r.clients {
 				client.send <- msg
 				r.tracer.Trace(" -- send to client.")
@@ -70,10 +71,16 @@ func (r *room) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		log.Fatal("ServeHttp:", err)
 		return
 	}
+	authCookies, err := request.Cookie("auth")
+	if err != nil {
+		log.Fatal("failed to get auth cookie:", err)
+	}
+
 	client := &client{
-		socket: socket,
-		send:   make(chan []byte, messageBufferSize),
-		room:   r,
+		socket:   socket,
+		send:     make(chan *message, messageBufferSize),
+		room:     r,
+		userData: objx.MustFromBase64(authCookies.Value),
 	}
 	r.join <- client
 	defer func() { r.leave <- client }()
