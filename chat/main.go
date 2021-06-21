@@ -70,7 +70,9 @@ func main() {
 	/*
 		goweb, pat, routes, or mux 如果需要更细致的路由管理，可以使用这些第三方包
 	*/
+	// StripPrefix会移除前缀，FileServer用来处理静态资源，Dir函数决定哪些文件夹是可以被访问的
 	http.Handle("/asset/", http.StripPrefix("/asset", http.FileServer(http.Dir(filepath.Join("templates", "asset")))))
+	http.Handle("/avatars/", http.StripPrefix("/avatars", http.FileServer(http.Dir("./avatars"))))
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
 	http.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
 	http.Handle("/login", &templateHandler{filename: "login.html"})
@@ -87,6 +89,8 @@ func main() {
 		rw.Header().Set("Location", "/chat")
 		rw.WriteHeader(http.StatusTemporaryRedirect)
 	})
+	http.Handle("/upload", &templateHandler{filename: "upload.html"})
+	http.HandleFunc("/uploader", uploadHandler)
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
 	log.Println("starting web server on: ", *addr)
