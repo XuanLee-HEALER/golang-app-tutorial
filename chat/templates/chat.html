@@ -1,72 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="asset/css/bootstrap.css" />
-    <title>Chat</title>
-    <style>
-      input {
-        display: block;
-      }
 
-      ul {
-        list-style: none;
-      }
-      ul#messages {
-        list-style: none;
-      }
-      ul#messages li {
-        margin-bottom: 2px;
-      }
-      ul#message li img {
-        margin-right: 10px;
-      }
-    </style>
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="asset/css/bootstrap.css" />
+  <title>Chat</title>
+  <style>
+    input {
+      display: block;
+    }
+  </style>
+</head>
 
-  <body>
-    <div class="container">
-      <div class="panel panel-default">
-        <div class="panel-body">
-          <ul id="messages"></ul>
+<body>
+  <div class="container">
+    <h1>Chat Room</h1>
+    <div class="card">
+      <div class="card-body">
+        <div id="messages" class="list-group">
         </div>
       </div>
-      <form id="chatbox" role="form">
-        <div class="form-group">
-          <label for="message">Send a message as {{.UserData.name}}</label> or
-          <a href="/logout">Sign out</a>
-          <textarea
-            id="chatroom"
-            cols="30"
-            rows="10"
-            class="form-control"
-          ></textarea>
-          <input type="submit" value="Send" class="btn btn-default" />
-        </div>
-      </form>
     </div>
-  </body>
-
+    <form id="chatbox" role="form">
+      <div class="form-group">
+        <label for="message">Send a message as {{.UserData.name}}</label> or
+        <a href="/logout">Sign out</a>
+        <textarea id="chatroom" cols="30" rows="10" class="form-control"></textarea>
+        <input type="submit" value="Send" class="btn btn-primary" />
+      </div>
+    </form>
+  </div>
+  <script src="asset/js/jquery-3.6.0.js"></script>
   <script>
-    (function () {
-      var socket = null;
-      var msgBox = document.getElementById("chatroom");
-      var messages = document.getElementById("messages");
-      document
-        .getElementById("chatbox")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-          if (!msgBox.value) return false;
-          if (!socket) {
-            alert("Error: there is no socket connection.");
-            return false;
-          }
-          socket.send(JSON.stringify({ Message: msgBox.value }));
-          msgBox.value = "";
+    $(window).on("load", function () {
+      let socket = null
+      let msgBox = $("#chatroom")
+      let messages = $("#messages")
+      $("#chatbox").on("submit", function (e) {
+        e.preventDefault()
+        if (!msgBox.val()) return false
+        if (!socket) {
+          alert("Error: there is no socket connection.");
           return false;
-        });
+        }
+        socket.send(JSON.stringify({
+          Message: msgBox.val()
+        }));
+        msgBox.val("")
+        return false;
+      })
       if (!window["WebSocket"]) {
         alert("Error: your browser does not support web sockets.");
       } else {
@@ -75,19 +59,33 @@
           alert("connection has been closed");
         };
         socket.onmessage = function (e) {
-          var data = JSON.parse(e.data);
-          var li = document.createElement("li");
-          var img = document.createElement("img");
-          var strong = document.createElement("strong");
-          var span = document.createElement("span");
-          img.style.cssText = "width: 50; verticalAlign: 'middle'";
-          img.setAttribute("src", data.AvatarURL);
-          span.innerText = data.Message;
-          li.appendChild(img);
-          li.appendChild(span);
-          messages.appendChild(li);
+          let data = JSON.parse(e.data);
+
+          let nameAndSaidTime = $("<div></div>").addClass("d-flex").addClass("w-100").addClass(
+            "justify-content-between")
+          let name = $("<h5></h5>").addClass("mb-1").append(data.Name)
+          let saidTime = $("<small></small>").append("3 seconds ago")
+          nameAndSaidTime.append(name).append(saidTime)
+          let tail = $("<small></small>").append("And some small print.")
+          let message = $("<p></p>").append(data.Message)
+          let avatar = $("<img />").addClass("img-thumbnail").attr("src", data.AvatarURL).attr("alt", "avatar")
+          let saidUnit = $("<a></a>").addClass("list-group-item list-group-item-action").attr("href", "#").attr(
+            "aria-current", "true")
+          saidUnit.append(nameAndSaidTime).append(message).append(tail)
+          messages.append(saidUnit);
+          // let li = document.createElement("li");
+          // let img = document.createElement("img");
+          // let strong = document.createElement("strong");
+          // let span = document.createElement("span");
+          // img.style.cssText = "width: 50; verticalAlign: 'middle'";
+          // img.setAttribute("src", data.AvatarURL);
+          // span.innerText = data.Message;
+          // li.appendChild(img);
+          // li.appendChild(span);
         };
       }
-    })();
+    })
   </script>
+</body>
+
 </html>
