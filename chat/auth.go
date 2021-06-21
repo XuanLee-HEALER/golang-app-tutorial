@@ -77,6 +77,7 @@ func loginHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 		authCookieValue := objx.New(map[string]interface{}{
 			"name":       user.Name(),
+			"email":      user.Email(),
 			"avatar_url": user.AvatarURL(),
 		}).MustBase64() // base64保证数据加密，当数据通过url传输或者保存数据进cookie时可以通过这种方法增强安全性，但是base64加密是对称性加密，可以通过工具解密
 		http.SetCookie(writer, &http.Cookie{
