@@ -35,12 +35,27 @@ var UseGravatarAvatar GravatarAvatar
 
 func (GravatarAvatar) GetAvatarURL(c *client) (string, error) {
 	var userIdStr string
-	if userId, ok := c.userData["userId"]; !ok {
+	if userId, ok := c.userData["userid"]; !ok {
 		return "", ErrNoAvatarURL
 	} else if userIdStr, ok = userId.(string); !ok {
 		return "", ErrCastAvatarURL
 	}
 
 	// crypto库中有很多加密方法，md5实现了io.Writer接口，可以使用WriteString来向其中写入数据，Sum方法可以获得hash值
-	return fmt.Sprintf("//www.gravatar.com/avatar/%x", userIdStr), nil
+	return fmt.Sprintf("//www.gravatar.com/avatar/%s", userIdStr), nil
+}
+
+type FileSystemAvatar struct{}
+
+var UseFileSystemAvatar FileSystemAvatar
+
+func (FileSystemAvatar) GetAvatarURL(c *client) (string, error) {
+	var userIdStr string
+	if userId, ok := c.userData["userid"]; !ok {
+		return "", ErrNoAvatarURL
+	} else if userIdStr, ok = userId.(string); !ok {
+		return "", ErrCastAvatarURL
+	}
+
+	return fmt.Sprintf("/avatars/%s.jpg", userIdStr), nil
 }

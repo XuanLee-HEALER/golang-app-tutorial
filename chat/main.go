@@ -54,7 +54,7 @@ func main() {
 	flag.BoolVar(&verbose, "v", false, "open verbose mode")
 	// parse the flag
 	flag.Parse()
-	r := newRoom(UseGravatarAvatar)
+	r := newRoom(UseFileSystemAvatar)
 	if verbose {
 		r.tracer = trace.New(os.Stdout)
 	}

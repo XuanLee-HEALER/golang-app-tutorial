@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 )
 
@@ -21,8 +23,9 @@ func uploadHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filename := path.Join("avatars", userId+path.Ext(header.Filename))
-	err = ioutil.WriteFile(filename, data, 0600)
+	err = os.WriteFile(filename, data, 0600)
 	if err != nil {
+		fmt.Println(err.Error())
 		http.Error(rw, err.Error(), http.StatusInternalServerError)
 		return
 	}
