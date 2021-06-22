@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
 )
 
 // 自定义错误类型，获取头像url失败
@@ -56,6 +58,19 @@ func (FileSystemAvatar) GetAvatarURL(c *client) (string, error) {
 	} else if userIdStr, ok = userId.(string); !ok {
 		return "", ErrCastAvatarURL
 	}
+	files, err := os.ReadDir("avatars")
+	if err != nil {
+		return "", ErrNoAvatarURL
+	}
 
-	return fmt.Sprintf("/avatars/%s.jpg", userIdStr), nil
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if match, _ := path.Match(userIdStr+"*", file.Name()); match {
+			return "/avatars/" + file.Name(), nil
+		}
+	}
+
+	return "", nil
 }
