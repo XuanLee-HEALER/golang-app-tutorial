@@ -18,7 +18,12 @@ import (
 )
 
 // set service active avatar implementation
-var avatars Avatar = UseFileSystemAvatar
+var avatars Avatar = TryAvatars{
+	UseFileSystemAvatar,
+	UseAuthAvatar,
+	// 总能获取到一个默认的头像地址
+	UseGravatarAvatar,
+}
 
 const (
 	googleClientId     = "889254910425-iupbf91rpnb4e7ub90mq43jgk4r9kuqe.apps.googleusercontent.com"
@@ -70,6 +75,9 @@ func main() {
 		google.New(googleClientId, googleClientSecret, "http://localhost:8080/auth/callback/google"),
 	)
 
+	// 创建头像目录，忽略任何意外情况
+	_ = os.Mkdir("avatars", os.ModeDir)
+
 	/*
 		goweb, pat, routes, or mux 如果需要更细致的路由管理，可以使用这些第三方包
 	*/
@@ -92,7 +100,7 @@ func main() {
 		rw.Header().Set("Location", "/chat")
 		rw.WriteHeader(http.StatusTemporaryRedirect)
 	})
-	http.Handle("/upload", &templateHandler{filename: "upload.html"})
+	http.Handle("/upload", MustAuth(&templateHandler{filename: "upload.html"}))
 	http.HandleFunc("/uploader", uploadHandler)
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
