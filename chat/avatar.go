@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path"
 )
@@ -13,7 +12,7 @@ var ErrCastAvatarURL = errors.New("chat: Unable to cast avatar URL to string")
 
 type Avatar interface {
 	// 不同方式都可以通过同样的接口来获取头像url
-	GetAvatarURL(c *client) (string, error)
+	GetAvatarURL(ChatUser) (string, error)
 }
 
 type AuthAvatar struct{}
@@ -21,56 +20,38 @@ type AuthAvatar struct{}
 var UseAuthAvatar AuthAvatar
 
 // GetAvatarURL 忽略接收参数的名字可以让go抛弃对于实例自身的引用，且可以提醒开发者不使用这个引用
-func (AuthAvatar) GetAvatarURL(c *client) (string, error) {
-	var urlStr string
-	if url, ok := c.userData["avatar_url"]; !ok {
+func (AuthAvatar) GetAvatarURL(u ChatUser) (string, error) {
+	url := u.AvatarURL()
+	if len(url) == 0 {
 		return "", ErrNoAvatarURL
-	} else if urlStr, ok = url.(string); !ok {
-		return "", ErrCastAvatarURL
 	}
-	return urlStr, nil
+	return url, nil
 }
 
 type GravatarAvatar struct{}
 
 var UseGravatarAvatar GravatarAvatar
 
-func (GravatarAvatar) GetAvatarURL(c *client) (string, error) {
-	var userIdStr string
-	if userId, ok := c.userData["userid"]; !ok {
-		return "", ErrNoAvatarURL
-	} else if userIdStr, ok = userId.(string); !ok {
-		return "", ErrCastAvatarURL
-	}
-
+func (GravatarAvatar) GetAvatarURL(u ChatUser) (string, error) {
 	// crypto库中有很多加密方法，md5实现了io.Writer接口，可以使用WriteString来向其中写入数据，Sum方法可以获得hash值
-	return fmt.Sprintf("//www.gravatar.com/avatar/%s", userIdStr), nil
+	return "//www.gravatar.com/avatar/" + u.UniqueID(), nil
 }
 
 type FileSystemAvatar struct{}
 
 var UseFileSystemAvatar FileSystemAvatar
 
-func (FileSystemAvatar) GetAvatarURL(c *client) (string, error) {
-	var userIdStr string
-	if userId, ok := c.userData["userid"]; !ok {
-		return "", ErrNoAvatarURL
-	} else if userIdStr, ok = userId.(string); !ok {
-		return "", ErrCastAvatarURL
-	}
-	files, err := os.ReadDir("avatars")
-	if err != nil {
-		return "", ErrNoAvatarURL
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		if match, _ := path.Match(userIdStr+"*", file.Name()); match {
-			return "/avatars/" + file.Name(), nil
+func (FileSystemAvatar) GetAvatarURL(u ChatUser) (string, error) {
+	if files, err := os.ReadDir("avatars"); err == nil {
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			if match, _ := path.Match(u.UniqueID()+"*", file.Name()); match {
+				return "/avatars/" + file.Name(), nil
+			}
 		}
 	}
 
-	return "", nil
+	return "", ErrNoAvatarURL
 }

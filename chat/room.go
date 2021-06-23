@@ -15,18 +15,16 @@ type room struct {
 	leave   chan *client     // 离开房间的客户端
 	clients map[*client]bool // 所有的客户端
 	tracer  trace.Tracer     // 记录聊天室内的信息
-	avatar  Avatar           // 每个聊天室都有一个获取头像url的方式
 }
 
 // 创建实例的helper函数,传入avatar
-func newRoom(avatar Avatar) *room {
+func newRoom() *room {
 	return &room{
 		forward: make(chan *message),
 		join:    make(chan *client),
 		leave:   make(chan *client),
 		clients: make(map[*client]bool),
 		tracer:  trace.Off(),
-		avatar:  avatar,
 	}
 }
 

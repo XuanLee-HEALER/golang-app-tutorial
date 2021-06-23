@@ -4,12 +4,30 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/stretchr/gomniauth"
+	gomniauthcommon "github.com/stretchr/gomniauth/common"
 	"github.com/stretchr/objx"
 )
+
+// ChatUser 代表登录聊天室的用户
+type ChatUser interface {
+	UniqueID() string
+	AvatarURL() string
+}
+
+type chatUser struct {
+	// 类型嵌入，User接口包含了AvatarURL方法，所以不需要专门实现
+	gomniauthcommon.User
+	uniqueID string
+}
+
+func (u chatUser) UniqueID() string {
+	return u.uniqueID
+}
 
 type authHandler struct {
 	next http.Handler
@@ -32,6 +50,7 @@ func (a *authHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	a.next.ServeHTTP(writer, request)
 }
 
+// MustAuth 返回一个AuthHandler
 func MustAuth(handler http.Handler) *authHandler {
 	return &authHandler{next: handler}
 }
@@ -55,11 +74,11 @@ func loginHandler(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 		// 第一个state参数是编码后的map数据，发送给授权服务商，服务商会把这些数据再发回给回调url。第二个参数也是发送给服务商的map数据，可能会改变授权行为，例如scope参数
-		loginUrl, err := provider.GetBeginAuthURL(nil, nil)
+		loginURL, err := provider.GetBeginAuthURL(nil, nil)
 		if err != nil {
 			http.Error(writer, fmt.Sprintf("error when trying to GetBeginAuthURL for %s: %s", provider, err), http.StatusInternalServerError)
 		}
-		writer.Header().Set("Location", loginUrl)
+		writer.Header().Set("Location", loginURL)
 		writer.WriteHeader(http.StatusTemporaryRedirect)
 	case "callback":
 		provider, err := gomniauth.Provider(provider) // 返回服务供应商信息
@@ -78,14 +97,19 @@ func loginHandler(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 
+		chatUser := &chatUser{User: user}
 		m := md5.New()
 		io.WriteString(m, strings.ToLower(user.Email()))
-		userId := fmt.Sprintf("%x", m.Sum(nil))
+		chatUser.uniqueID = fmt.Sprintf("%x", m.Sum(nil))
+		// 全局默认的avatars是文件上传的方式
+		avatarURL, err := avatars.GetAvatarURL(chatUser)
+		if err != nil {
+			log.Fatalln("Error when trying to GetAvatarURL", "-", err)
+		}
 		authCookieValue := objx.New(map[string]interface{}{
-			"userid":     userId,
+			"userid":     chatUser.uniqueID,
 			"name":       user.Name(),
-			"email":      user.Email(),
-			"avatar_url": user.AvatarURL(),
+			"avatar_url": avatarURL,
 		}).MustBase64() // base64保证数据加密，当数据通过url传输或者保存数据进cookie时可以通过这种方法增强安全性，但是base64加密是对称性加密，可以通过工具解密
 		http.SetCookie(writer, &http.Cookie{
 			Name:  "auth",

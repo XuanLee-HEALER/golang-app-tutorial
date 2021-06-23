@@ -17,6 +17,9 @@ import (
 	"github.com/stretchr/objx"
 )
 
+// set service active avatar implementation
+var avatars Avatar = UseFileSystemAvatar
+
 const (
 	googleClientId     = "889254910425-iupbf91rpnb4e7ub90mq43jgk4r9kuqe.apps.googleusercontent.com"
 	googleClientSecret = "384dIEsPznMKJmKweLdTaYgm"
@@ -54,7 +57,7 @@ func main() {
 	flag.BoolVar(&verbose, "v", false, "open verbose mode")
 	// parse the flag
 	flag.Parse()
-	r := newRoom(UseFileSystemAvatar)
+	r := newRoom()
 	if verbose {
 		r.tracer = trace.New(os.Stdout)
 	}
