@@ -33,7 +33,7 @@ var UseAuthAvatar AuthAvatar
 
 // GetAvatarURL 忽略接收参数的名字可以让go抛弃对于实例自身的引用，且可以提醒开发者不使用这个引用
 func (AuthAvatar) GetAvatarURL(u ChatUser) (string, error) {
-	url := u.AvatarURL()
+	url := u.Avatar()
 	if len(url) == 0 {
 		return "", ErrNoAvatarURL
 	}

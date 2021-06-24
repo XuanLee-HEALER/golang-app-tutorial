@@ -1,27 +1,21 @@
 package main
 
 import (
-	"crypto/md5"
-	"fmt"
-	"io"
-	"log"
 	"net/http"
-	"strings"
 
-	"github.com/stretchr/gomniauth"
-	gomniauthcommon "github.com/stretchr/gomniauth/common"
-	"github.com/stretchr/objx"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
 )
 
 // ChatUser 代表登录聊天室的用户
 type ChatUser interface {
 	UniqueID() string
-	AvatarURL() string
+	Avatar() string
 }
 
 type chatUser struct {
 	// 类型嵌入，User接口包含了AvatarURL方法，所以不需要专门实现
-	gomniauthcommon.User
+	goth.User
 	uniqueID string
 }
 
@@ -29,12 +23,16 @@ func (u chatUser) UniqueID() string {
 	return u.uniqueID
 }
 
+func (u chatUser) Avatar() string {
+	return u.AvatarURL
+}
+
 type authHandler struct {
 	next http.Handler
 }
 
 func (a *authHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	cookies, err := request.Cookie("auth")
+	cookies, err := request.Cookie("_gothic_session")
 	if err == http.ErrNoCookie || cookies.Value == "" {
 		// not authenticated
 		writer.Header().Set("Location", "/login")
@@ -56,71 +54,11 @@ func MustAuth(handler http.Handler) *authHandler {
 }
 
 func loginHandler(writer http.ResponseWriter, request *http.Request) {
-	segs := strings.Split(request.URL.Path, "/")
-	var action, provider string
-
-	if len(segs) < 4 {
-		action = "notfound"
+	if _, err := gothic.CompleteUserAuth(writer, request); err == nil {
+		writer.Header().Set("Location", "/")
+		writer.WriteHeader(http.StatusTemporaryRedirect)
 	} else {
-		action = segs[2]
-		provider = segs[3]
-	}
-
-	switch action {
-	case "login":
-		provider, err := gomniauth.Provider(provider)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
-			return
-		}
-		// 第一个state参数是编码后的map数据，发送给授权服务商，服务商会把这些数据再发回给回调url。第二个参数也是发送给服务商的map数据，可能会改变授权行为，例如scope参数
-		loginURL, err := provider.GetBeginAuthURL(nil, nil)
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("error when trying to GetBeginAuthURL for %s: %s", provider, err), http.StatusInternalServerError)
-		}
-		writer.Header().Set("Location", loginURL)
-		writer.WriteHeader(http.StatusTemporaryRedirect)
-	case "callback":
-		provider, err := gomniauth.Provider(provider) // 返回服务供应商信息
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("error when trying to get provider %s: %s", provider, err), http.StatusBadRequest)
-			return
-		}
-		creds, err := provider.CompleteAuth(objx.MustFromURLQuery(request.URL.RawQuery)) // 将RawQuery从请求转换为objx.Map，CompleteAuth使用这个值来完成与服务商的握手
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("error when trying to complete auth for %s: %s", provider, err), http.StatusInternalServerError)
-			return
-		}
-		user, err := provider.GetUser(creds) // 通过授权内容来获取用户信息
-		if err != nil {
-			http.Error(writer, fmt.Sprintf("error when trying to trying get user from %s: %s", provider, err), http.StatusInternalServerError)
-			return
-		}
-
-		chatUser := &chatUser{User: user}
-		m := md5.New()
-		io.WriteString(m, strings.ToLower(user.Email()))
-		chatUser.uniqueID = fmt.Sprintf("%x", m.Sum(nil))
-		// 全局默认的avatars是文件上传的方式
-		avatarURL, err := avatars.GetAvatarURL(chatUser)
-		if err != nil {
-			log.Fatalln("Error when trying to GetAvatarURL", "-", err)
-		}
-		authCookieValue := objx.New(map[string]interface{}{
-			"userid":     chatUser.uniqueID,
-			"name":       user.Name(),
-			"avatar_url": avatarURL,
-		}).MustBase64() // base64保证数据加密，当数据通过url传输或者保存数据进cookie时可以通过这种方法增强安全性，但是base64加密是对称性加密，可以通过工具解密
-		http.SetCookie(writer, &http.Cookie{
-			Name:  "auth",
-			Value: authCookieValue,
-			Path:  "/",
-		})
-		writer.Header().Set("Location", "/chat")
-		writer.WriteHeader(http.StatusTemporaryRedirect)
-	default:
-		writer.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(writer, "auth action %s not supported", action)
+		gothic.BeginAuthHandler(writer, request)
 	}
 
 }

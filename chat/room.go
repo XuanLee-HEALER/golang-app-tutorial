@@ -71,7 +71,7 @@ func (r *room) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		log.Fatal("ServeHttp:", err)
 		return
 	}
-	authCookies, err := request.Cookie("auth")
+	authCookies, err := request.Cookie("_gothic_session")
 	if err != nil {
 		log.Fatal("failed to get auth cookie:", err)
 	}

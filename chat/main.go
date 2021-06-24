@@ -9,15 +9,18 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/google"
 	"github.com/namsral/flag"
 	"github.com/stretchr/objx"
 )
 
 var (
-	addr    *string
-	verbose *bool
+	addr    string
+	verbose bool
 	avatars Avatar = TryAvatars{
 		UseFileSystemAvatar,
 		UseAuthAvatar,
@@ -57,15 +60,28 @@ func (t *templateHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 }
 
 func init() {
-	flag.StringVar(addr, "addr", ":8080", "the address of the application")
-	flag.BoolVar(verbose, "verbose", false, "open verbose mode")
+	flag.StringVar(&addr, "addr", ":8080", "the address of the application")
+	flag.BoolVar(&verbose, "verbose", false, "open verbose mode")
 	flag.Parse()
 
-	goth.UseProviders(
-		google.New(googleClientId, googleClientSecret, "/auth/callback/google"),
-	)
 	// 创建头像目录，忽略任何意外情况
 	_ = os.Mkdir("avatars", os.ModeDir)
+
+	goth.UseProviders(
+		google.New(googleClientId, googleClientSecret, "http://localhost:8080/"),
+	)
+
+	// 初始化goth的coockie store
+	key := "funnyboy" // Replace with your SESSION_SECRET or similar
+	maxAge := 60 * 30 // 30 days
+	isProd := false   // Set to true when serving over https
+	store := sessions.NewCookieStore([]byte(key))
+	store.MaxAge(maxAge)
+	store.Options.Path = "/"
+	store.Options.HttpOnly = true // HttpOnly should always be enabled
+	store.Options.Secure = isProd
+
+	gothic.Store = store
 }
 
 func main() {
@@ -80,15 +96,15 @@ func main() {
 		goweb, pat, routes, or mux 如果需要更细致的路由管理，可以使用这些第三方包
 	*/
 	// StripPrefix会移除前缀，FileServer用来处理静态资源，Dir函数决定哪些文件夹是可以被访问的
-	http.Handle("/asset/", http.StripPrefix("/asset", http.FileServer(http.Dir(filepath.Join("templates", "asset")))))
-	http.Handle("/avatars/", http.StripPrefix("/avatars", http.FileServer(http.Dir("./avatars"))))
+	rtr := mux.NewRouter()
+
 	// htmlHander的方法是指针类型的接收参数，所以传入Handle函数的也应该是指针类型
-	http.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
-	http.Handle("/login", &templateHandler{filename: "login.html"})
-	http.HandleFunc("/auth/", loginHandler)
-	http.Handle("/room", r)
+	rtr.Handle("/", MustAuth(&templateHandler{filename: "chat.html"}))
+	rtr.Handle("/login", &templateHandler{filename: "login.html"})
+	rtr.HandleFunc("/auth/{provider}", loginHandler)
+	rtr.Handle("/room", r)
 	// 添加logout功能，删除coockie并跳转回首页
-	http.HandleFunc("/logout", func(rw http.ResponseWriter, r *http.Request) {
+	rtr.HandleFunc("/logout", func(rw http.ResponseWriter, r *http.Request) {
 		http.SetCookie(rw, &http.Cookie{
 			Name:   "auth",
 			Value:  "", // 不是所有浏览器都会强制删除cookie，所以需要显示设置值
@@ -98,12 +114,17 @@ func main() {
 		rw.Header().Set("Location", "/chat")
 		rw.WriteHeader(http.StatusTemporaryRedirect)
 	})
-	http.Handle("/upload", MustAuth(&templateHandler{filename: "upload.html"}))
-	http.HandleFunc("/uploader", uploadHandler)
+	rtr.Handle("/upload", MustAuth(&templateHandler{filename: "upload.html"}))
+	rtr.HandleFunc("/uploader", uploadHandler)
+
+	http.Handle("/asset/", http.StripPrefix("/asset", http.FileServer(http.Dir(filepath.Join("templates", "asset")))))
+	http.Handle("/avatars/", http.StripPrefix("/avatars", http.FileServer(http.Dir("./avatars"))))
+	http.Handle("/", rtr)
+
 	go r.run()
 	// 监听localhost 8080，省略ip则监听localhost
-	log.Println("starting web server on: ", *addr)
-	if err := http.ListenAndServe(*addr, nil); err != nil {
+	log.Println("starting web server on: ", addr)
+	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
