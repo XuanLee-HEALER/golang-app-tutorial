@@ -9,12 +9,18 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/markbates/goth"
 	"github.com/namsral/flag"
 	"github.com/stretchr/gomniauth"
 	"github.com/stretchr/gomniauth/providers/facebook"
 	"github.com/stretchr/gomniauth/providers/github"
 	"github.com/stretchr/gomniauth/providers/google"
 	"github.com/stretchr/objx"
+)
+
+var (
+	addr    string
+	verbose bool
 )
 
 const (
@@ -47,13 +53,19 @@ func (t *templateHandler) ServeHTTP(writer http.ResponseWriter, request *http.Re
 	t.templ.Execute(writer, data)
 }
 
+func init() {
+	flag.StringVar(&addr, "addr", ":8080", "the address of the application")
+	flag.BoolVar(&verbose, "verbose", false, "open verbose mode")
+	flag.Parse()
+
+	goth.UseProviders(
+		google.New(googleClientId, googleClientSecret, "/auth/callback/google")
+	)
+}
+
 func main() {
 	var verbose bool
 
-	addr := flag.String("addr", ":8080", "the addr of the application.")
-	flag.BoolVar(&verbose, "v", false, "open verbose mode")
-	// parse the flag
-	flag.Parse()
 	r := newRoom(UseFileSystemAvatar)
 	if verbose {
 		r.tracer = trace.New(os.Stdout)
